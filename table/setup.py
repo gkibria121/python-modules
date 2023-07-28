@@ -4,8 +4,8 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
-    name='sk_calculator',
-    version='0.0.2',
+    name='sk_table_handler',
+    version='0.0.1',
     description='A simple calculator program',
     author='gkibria',
     long_description=long_description,

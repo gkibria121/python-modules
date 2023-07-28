@@ -5,7 +5,8 @@ from sk_calculator import Calculator
 calculator = Calculator()
 scripts = '''
 def c1(x):
-    return x'''
+
+    return x+1'''
 
 calculator.set_scripts(scripts)
 
