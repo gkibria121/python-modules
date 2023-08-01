@@ -1,9 +1,8 @@
 import regex as re
-
 import json
-
-
+from sk_calculator import Calculator
 class VariableHandler:
+
     def __init__(self):
         self.calculator = None
 
@@ -12,175 +11,94 @@ class VariableHandler:
         self.calculator = calculator
 
     def remove_comments(self, declarations):
-
         single_line_comment = r'\#.*+($)?'
         declarations = re.sub(single_line_comment, '', declarations)
-
         multiline_comment = r'\/\*[\s\S]*?\*\/'
         declarations = re.sub(multiline_comment, '', declarations)
-
         extra_space = r'\n\s*'
         declarations = re.sub(extra_space, '', declarations)
-
         declarations = declarations.strip()
         return declarations
 
-    def declare(self, declarations):
 
-        pattern = '\$[^=]+=[^;]+'
+    def solve_variables(self,declaraions):
+        solved_expression = {}
 
-        declarations = re.findall(pattern, declarations)
-        declaration_list = {}
+        pattern = r'((\$\w+)\s*=\s*([^;]+);)'
 
-        for declaration in declarations:
-            variable, expression = re.split(r'\s*(\$[^=]+)\s*=\s*', declaration)[1:]
-            variable = variable.replace(' ', '')
-            if re.search(re.escape(variable) + r'(\s|\b)', expression):
-                if type(declaration_list[variable]) == list:
-                    declaration_list[variable] = declaration_list[variable] + [expression]
+        matches = re.findall(pattern,declaraions)
+        for match in matches:
+            variable_in_expression =re.search(r'\$\w+',match[2])
+            if  not variable_in_expression:
+                solved_expression[match[1]] =self.eval_value(match[2])
+
+            if variable_in_expression:
+                temp_expression = match[2]
+                for key,value in solved_expression.items():
+                    temp_expression = re.sub(re.escape(key)+r'(?=\b)',value,temp_expression)
+                variable_in_solved_expression =re.search(r'\$\w+',temp_expression)
+
+                if not variable_in_solved_expression:
+                    solved_expression[match[1]]=self.eval_value(temp_expression)
                 else:
-                    declaration_list[variable] = [declaration_list[variable]] + [expression]
-            else:
-                declaration_list[variable] = expression
-        return declaration_list
+                    raise NameError(variable_in_solved_expression[0]+" Not defined")
 
-    def solve_expressions(self, declaration_list):
+        text = ''
+        for key,value in solved_expression.items():
+            text += f"{key} = {value};"
 
-        temp = {}
-        temp2 = {}
-        for variable, expression in declaration_list.items():
-            if '$' not in expression:
-                value = str(self.calculator.evaluate(str(expression)))
-                if not re.search(r'Unsupported', str(value)):
-                    try:
-                        temp[variable] = eval(value)
-                    except:
-                        temp[variable] = value
-                else:
-                    try:
-                        temp[variable] = eval(expression)
-                    except:
-                        temp[variable] = expression
+        return text
 
-        declaration_list.update(temp)
-        temp = {}
 
-        for key, value in self.declaration_list.items():
+    def eval_value(self,value):
+        is_expression = self.is_expression(value)
+        if is_expression:
+            value = self.solve_expression(value)
 
-            if '$' not in str(value):
+        if self.is_object(value):
+            value = str(eval(value))
 
-                value = str(value)
-                pattern = r'eval(\((?>[^()]|(?1))*\))'
-                expression_list = [item for index, item in enumerate(re.findall(pattern, value)) if item != ' ']
 
-                for expression in expression_list:
-                    expression_value = str(self.calculator.evaluate(expression))
-                    pattern = r'eval' + re.escape(expression)
-                    value = re.sub(pattern, expression_value, value)
-                try:
-                    temp[key] = eval(value)
-                except:
-                    temp[key] = value
+        return value
 
-        declaration_list.update(temp)
+    def process(self, declarations_text):
 
-        return declaration_list
+        declarations = self.remove_comments(declarations_text)
+        solve_variables = self.solve_variables(declarations)
+        return solve_variables
 
-    def evaluate_expression(self, expression):
-        value = ''
+    def is_expression(self,value):
+        pattern = r'\@((\"([^\"]+)\")|(\'([^\']+)\'))'
+        expression = re.search(pattern,value)
+        if expression:
+            return True
 
-        value = str(self.calculator.evaluate(str(expression)))
-        if '[' not in value and not '{' in value:
-            return value
-        try:
-            expression = eval(expression)
-        except:
-            pass
+        return False
+
+    def is_object(self,value):
+
+        pattern = r'[\{\}\[\]\]]'
+        if re.search(pattern,value):
+            return True
+
+        return False
+
+
+
+
+    def solve_expression(self,expression):
+
+        pattern = r'\@((\"([^\"]+)\")|(\'([^\']+)\'))'
+
+        expression = re.sub(pattern,lambda match: str(self.calculator.evaluate(match[3])) if match[5] ==None else str(self.calculator.evaluate(match[5])),expression)
         return expression
 
-    def solve_nested_variables(self, declaration_list):
 
-        resolved_variables = {}
-        nested_variables = {}
+    def set_regex_maker(self,regex_maker):
+        self.regex_maker = regex_maker
 
-        for variable, expression in declaration_list.items():
-            if '$' not in str(expression):
-                resolved_variables[variable] = expression
-            else:
-                nested_variables[variable] = expression
+variable = "$x = [5 , @'5+10'];$y = $x+[3];$z =$y+[2, @'1+2^3'];"
 
-        temp_resolved = {}
-
-        nested = True
-
-        while nested_variables:
-            nested = False
-            for variable, expression in nested_variables.items():
-                for resolved_variable, resolved_expression in resolved_variables.items():
-                    pattern = re.escape(resolved_variable) + r'(?>=\s|\b|$)'
-                    if re.search(pattern, expression):
-                        try:
-                            resolved_expression = eval(str(resolved_expression))
-                        except:
-                            resolved_expression = f"'{resolved_expression}'"
-
-                        expression = re.sub(pattern, str(resolved_expression), str(expression))
-
-                if '$' not in expression:
-                    temp_resolved[variable] = self.evaluate_expression(expression)
-                    nested = True
-
-            for variable, expression in temp_resolved.items():
-                try:
-                    resolved_variables[variable] = eval(str(expression))
-                except:
-                    resolved_variables[variable] = expression
-
-                del nested_variables[variable]
-            temp_resolved = {}
-
-            if not nested:
-                break
-        declaration_list.update(resolved_variables)
-
-        return declaration_list
-
-    def resolve_recursive_variables(self, declaration_list):
-        resolved_variables = {}
-        recursive_variables = {}
-        temp = {}
-
-        for variable, expression in declaration_list.items():
-
-            if re.search(re.escape(variable) + r'(\s|\b)', str(expression)):
-                recursive_variables[variable] = expression
-            else:
-                resolved_variables[variable] = expression
-
-        for recursive_variable, recursive_expression in recursive_variables.items():
-
-            recursive_reverse_value = recursive_expression[::-1]
-            value = recursive_reverse_value[0]
-            for item in recursive_reverse_value[1:]:
-                value = re.sub(re.escape(recursive_variable) + r'(\s|\b)', '(' + item + ')', value)
-            try:
-                temp[recursive_variable] = eval(self.evaluate_expression(value))
-            except:
-                temp[recursive_variable] = self.evaluate_expression(value)
-
-        resolved_variables.update(temp)
-
-        return resolved_variables
-
-    def get_result(self, declarations):
-
-        declarations = self.remove_comments(declarations)
-
-        self.declaration_list = self.declare(declarations)
-
-        self.declaration_list = self.solve_expressions(self.declaration_list)
-
-        self.declaration_list = self.resolve_recursive_variables(self.declaration_list)
-        self.declaration_list = self.solve_nested_variables(self.declaration_list)
-
-        return self.declaration_list
+data= VariableHandler()
+data.set_calculator(Calculator())
+print(data.process(variable))

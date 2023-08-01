@@ -4,8 +4,8 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
-    name='sk_variable_handler',
-    version='1.0.102',
+    name='sk_regex_maker',
+    version='1.0.101',
     description='A simple Variable Handling  program',
     author='gkibria',
     long_description=long_description,

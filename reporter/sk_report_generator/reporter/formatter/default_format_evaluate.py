@@ -7,11 +7,11 @@ class DefaultFormat:
             value = str(value)
             digit = re.sub(r'[,.e\+\-]','',value).isdigit()
             if digit:
-                f_value = value
+                f_value = eval(value)
             else:
                 f_value = f'"{value}"'
 
-            value =eval("format(f_value,format_spec)")
+            value =eval(f"format({f_value},format_spec)")
 
         return self.go_next.run(value,format_spec,format_class_list)
 
