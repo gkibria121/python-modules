@@ -1,9 +1,0 @@
-LICENSE.txt
-README.md
-setup.py
-sk_table_handler.egg-info/PKG-INFO
-sk_table_handler.egg-info/SOURCES.txt
-sk_table_handler.egg-info/dependency_links.txt
-sk_table_handler.egg-info/requires.txt
-sk_table_handler.egg-info/top_level.txt
-sk_table_hanlder/__init__.py
