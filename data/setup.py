@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name='sk_data_handler',
-    version='1.0.101',
+    version='1.0.102',
     description='A simple Reporting program',
     author='gkibria',
     long_description=long_description,
